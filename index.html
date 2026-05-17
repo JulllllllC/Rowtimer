@@ -430,6 +430,11 @@
         <span id="ctotals">0 splits · 0 seg</span>
       </div>
     </div>
+    <div class="save-row">
+      <button class="save-big-btn" onclick="saveChronoSession()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"/><path d="M12 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M14 4l0 4l-6 0l0 -4"/></svg>Sauvegarder la séance
+      </button>
+    </div>
   </div>
 
   <!-- ═══ MULTI ═══ -->
@@ -727,23 +732,80 @@ function mUpdateFooter() {
 /* ══════════════════════
    SESSIONS & HISTORIQUE
 ══════════════════════ */
-let sessions = JSON.parse(localStorage.getItem('nk_sessions') || '[]');
+let sessions = [];
+try {
+  const stored = localStorage.getItem('rowtimer_sessions');
+  sessions = stored ? JSON.parse(stored) : [];
+  if (!Array.isArray(sessions)) sessions = [];
+} catch(e) {
+  sessions = [];
+  localStorage.removeItem('rowtimer_sessions');
+}
+
+
+function saveChronoSession() {
+  if (cTotalSplits === 0 && cElapsed === 0) { showToast('Aucune donnée à sauvegarder'); return; }
+  const segs = [...new Set(cSplits.map(s => s.seg))];
+  const s = {
+    id: Date.now(),
+    timestamp: Date.now(),
+    label: 'Séance chrono',
+    type: 'chrono',
+    elapsed: cElapsed,
+    segments: segs.map(seg => ({
+      num: seg,
+      splits: cSplits.filter(sp => sp.seg === seg).map(sp => ({ lap: sp.lap, cumul: sp.cumul, rate: sp.rate }))
+    }))
+  };
+  sessions.unshift(s);
+  try {
+    localStorage.setItem('rowtimer_sessions', JSON.stringify(sessions));
+    showToast('Séance sauvegardée ✓');
+  } catch(e) {
+    showToast('Erreur de sauvegarde — stockage plein ?');
+  }
+}
 
 function saveSession() {
   if (!boats.length) { showToast('Aucun équipage à sauvegarder'); return; }
   const s = { id: Date.now(), timestamp: Date.now(), label: 'Séance multi-bateaux', boats: boats.map(b => ({ name: b.name, color: b.color, elapsed: b.elapsed, splits: [...b.splits], finished: b.finished })) };
   sessions.unshift(s);
-  localStorage.setItem('nk_sessions', JSON.stringify(sessions));
-  showToast('Séance sauvegardée !');
+  try {
+    localStorage.setItem('rowtimer_sessions', JSON.stringify(sessions));
+    showToast('Séance sauvegardée ✓');
+  } catch(e) {
+    showToast('Erreur de sauvegarde — stockage plein ?');
+  }
 }
 
 function renderHist() {
   const c = document.getElementById('hist-content');
   if (!sessions.length) { c.innerHTML = '<div class="hist-empty"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.983 8.978c-.383 .028 -.772 .042 -1.164 .042c-3.48 0 -7 -1.12 -7 -3s3.52 -3 7 -3s7 1.12 7 3"/><path d="M11.18 17.004c-3.274 -.086 -7.18 -1.187 -7.18 -3.004v-6"/><path d="M20 12v.5"/><path d="M20 18v.01"/><path d="M3 3l18 18"/></svg>Aucune séance sauvegardée</div>'; return; }
   c.innerHTML = sessions.map(s => {
-    const totalSplits = s.boats.reduce((a, b) => a + b.splits.length, 0);
-    const best = s.boats.reduce((a, b) => (!a || b.elapsed < a.elapsed) ? b : a, null);
-    const boatsHTML = s.boats.map(b => `<div class="sess-boat"><div class="sess-boat-dot" style="background:${b.color}"></div><span class="sess-boat-name">${b.name}</span><span class="sess-boat-t">${fmt(b.elapsed)}</span><span class="sess-boat-s">${b.splits.length} split${b.splits.length > 1 ? 's' : ''}</span></div>`).join('');
+    // Chrono type
+    if (s.type === 'chrono') {
+      const totalSplits = s.segments ? s.segments.reduce((a, sg) => a + sg.splits.length, 0) : 0;
+      const segsHTML = s.segments ? s.segments.map(sg =>
+        `<div class="sess-boat"><div class="sess-boat-dot" style="background:var(--green)"></div><span class="sess-boat-name">Segment ${sg.num}</span><span class="sess-boat-t">${fmt(sg.splits.reduce((a,sp)=>a+sp.lap,0))}</span><span class="sess-boat-s">${sg.splits.length} split${sg.splits.length>1?'s':''}</span></div>`
+      ).join('') : '';
+      return `<div class="sess-card">
+        <div class="sess-top"><span class="sess-name"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="font-size:12px;vertical-align:-1px;margin-right:4px"><path d="M10 2h4"/><path d="M12 14m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M12 10v4l2 2"/><path d="M5.5 5.5l-1 1"/><path d="M12 6v-4"/></svg>${s.label}</span><span class="sess-dt">${fmtDate(s.timestamp)}</span></div>
+        <div class="sess-stats">
+          <div class="sess-stat"><span class="sess-stat-v">${fmt(s.elapsed)}</span><span class="sess-stat-l">temps total</span></div>
+          <div class="sess-stat"><span class="sess-stat-v">${totalSplits}</span><span class="sess-stat-l">splits</span></div>
+          <div class="sess-stat"><span class="sess-stat-v">${s.segments ? s.segments.length : 0}</span><span class="sess-stat-l">segments</span></div>
+        </div>
+        <div class="sess-boats-list">${segsHTML}</div>
+        <div class="sess-acts">
+          <button class="sess-act" onclick="exportChronoCSV(${s.id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 20h-5.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v7.5"/><path d="M16 19h6"/><path d="M19 16l3 3l-3 3"/><path d="M4 10h16"/><path d="M10 4v16"/></svg>CSV</button>
+          <button class="sess-act del" onclick="deleteSession(${s.id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>Supprimer</button>
+        </div>
+      </div>`;
+    }
+    // Multi type
+    const totalSplits = s.boats ? s.boats.reduce((a, b) => a + b.splits.length, 0) : 0;
+    const best = s.boats ? s.boats.reduce((a, b) => (!a || b.elapsed < a.elapsed) ? b : a, null) : null;
+    const boatsHTML = s.boats ? s.boats.map(b => `<div class="sess-boat"><div class="sess-boat-dot" style="background:${b.color}"></div><span class="sess-boat-name">${b.name}</span><span class="sess-boat-t">${fmt(b.elapsed)}</span><span class="sess-boat-s">${b.splits.length} split${b.splits.length > 1 ? 's' : ''}</span></div>`).join('') : '';
     return `<div class="sess-card">
       <div class="sess-top"><span class="sess-name"><svg style="font-size:12px;vertical-align:-1px;margin-right:4px" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1"/><path d="M12 3l4 7h-8z" transform="translate(0 4)"/><path d="M12 3v10"/><path d="M6 17l6 -14"/></svg>${s.label}</span><span class="sess-dt">${fmtDate(s.timestamp)}</span></div>
       <div class="sess-stats">
@@ -763,8 +825,31 @@ function renderHist() {
 
 function deleteSession(id) {
   sessions = sessions.filter(s => s.id !== id);
-  localStorage.setItem('nk_sessions', JSON.stringify(sessions));
+  try { localStorage.setItem('rowtimer_sessions', JSON.stringify(sessions)); } catch(e) {}
   renderHist(); showToast('Séance supprimée');
+}
+
+/* ══ EXPORT CHRONO CSV ══ */
+function exportChronoCSV(id) {
+  const s = sessions.find(x => x.id === id); if (!s) return;
+  let csv = 'Séance chrono;' + fmtDate(s.timestamp) + '\n\n';
+  csv += 'Temps total;' + fmt(s.elapsed) + '\n\n';
+  if (s.segments) {
+    s.segments.forEach(sg => {
+      csv += 'Segment ' + sg.num + '\n';
+      csv += 'Split #;Temps au tour;Cadence (spm);Cumulé\n';
+      let c = 0;
+      sg.splits.forEach((sp, i) => {
+        c += sp.lap;
+        csv += `${i+1};${fmt(sp.lap)};${sp.rate || '—'};${fmt(c)}\n`;
+      });
+      csv += '\n';
+    });
+  }
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'chrono_' + s.id + '.csv'; a.click(); URL.revokeObjectURL(url);
+  showToast('CSV téléchargé');
 }
 
 /* ══ EXPORT CSV ══ */
