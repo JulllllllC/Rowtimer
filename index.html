@@ -371,7 +371,7 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4"/><path d="M12 14m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M12 10v4l2 2"/><path d="M5.5 5.5l-1 1"/><path d="M12 6v-4"/></svg>Chrono
     </button>
     <button class="nav-btn" id="nav-multi" onclick="showScreen('multi')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1"/><path d="M12 3l4 7h-8z" transform="translate(0 4)"/><path d="M12 3v10"/><path d="M6 17l6 -14"/></svg>Multi
+      <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15c0 0 2 2 9 2s9 -2 9 -2"/><path d="M3 15l1.5 3h15l1.5 -3"/><path d="M6 9l-3 -4"/><path d="M18 9l3 -4"/><path d="M6 9h12"/><path d="M6 9c0 -2 2 -3 6 -3s6 1 6 3"/></svg>Multi
     </button>
     <button class="nav-btn" id="nav-hist" onclick="showScreen('hist')">
       <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>Historique
@@ -798,6 +798,7 @@ function renderHist() {
         <div class="sess-boats-list">${segsHTML}</div>
         <div class="sess-acts">
           <button class="sess-act" onclick="exportChronoCSV(${s.id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 20h-5.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v7.5"/><path d="M16 19h6"/><path d="M19 16l3 3l-3 3"/><path d="M4 10h16"/><path d="M10 4v16"/></svg>CSV</button>
+          <button class="sess-act" onclick="exportChronoPDF(${s.id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/><path d="M9 8m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/><path d="M15 4m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/><path d="M4 20l14 0"/></svg>PDF</button>
           <button class="sess-act del" onclick="deleteSession(${s.id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>Supprimer</button>
         </div>
       </div>`;
@@ -850,6 +851,110 @@ function exportChronoCSV(id) {
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url; a.download = 'chrono_' + s.id + '.csv'; a.click(); URL.revokeObjectURL(url);
   showToast('CSV téléchargé');
+}
+
+/* ══ EXPORT CHRONO PDF ══ */
+function exportChronoPDF(id) {
+  const s = sessions.find(x => x.id === id); if (!s) return;
+  const totalSplits = s.segments ? s.segments.reduce((a, sg) => a + sg.splits.length, 0) : 0;
+
+  // Tableau résumé segments
+  const segRows = s.segments ? s.segments.map(sg => {
+    const times = sg.splits.map(sp => sp.lap);
+    const best = times.length ? Math.min(...times) : null;
+    const avg = times.length ? times.reduce((a,v)=>a+v,0)/times.length : null;
+    const total = times.reduce((a,v)=>a+v,0);
+    return `<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #eee;font-weight:500">Segment ${sg.num}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace">${fmt(total)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center">${sg.splits.length}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace">${best ? fmt(best) : '—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace">${avg ? fmt(avg) : '—'}</td>
+    </tr>`;
+  }).join('') : '';
+
+  // Détail splits
+  let splitsRows = '';
+  if (s.segments) {
+    s.segments.forEach(sg => {
+      let c = 0;
+      sg.splits.forEach((sp, i) => {
+        c += sp.lap;
+        splitsRows += `<tr>
+          <td style="padding:4px 10px;border-bottom:1px solid #f5f5f5;color:#555">Seg ${sg.num}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f5f5f5;text-align:center;font-weight:500">${i+1}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f5f5f5;font-family:monospace">${fmt(sp.lap)}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f5f5f5;font-family:monospace;color:#888">${sp.rate ? sp.rate + ' spm' : '—'}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f5f5f5;font-family:monospace">${fmt(c)}</td>
+        </tr>`;
+      });
+    });
+  }
+
+  // Données graphique — évolution des splits par segment
+  const lineDatasets = s.segments ? s.segments.filter(sg => sg.splits.length > 0).map((sg, i) => ({
+    label: 'Seg ' + sg.num,
+    color: ['#1D9E75','#378ADD','#D85A30','#7F77DD','#BA7517','#D4537E'][i % 6],
+    data: sg.splits.map(sp => parseFloat((sp.lap / 1000).toFixed(2)))
+  })) : [];
+  const maxLen = lineDatasets.length ? Math.max(...lineDatasets.map(d => d.data.length)) : 0;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Séance Rowtimer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:system-ui,sans-serif;max-width:780px;margin:40px auto;color:#222;padding:0 24px}
+    h1{font-size:22px;font-weight:600}
+    h2{font-size:15px;font-weight:600;margin:28px 0 10px;color:#333;border-bottom:1px solid #eee;padding-bottom:6px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{background:#1D9E75;color:#fff;padding:8px 10px;text-align:left;font-weight:500;font-size:12px}
+    .meta{display:flex;gap:20px;margin:12px 0 20px;padding:14px 18px;background:#f8f8f8;border-radius:10px}
+    .meta-item{display:flex;flex-direction:column;gap:2px}
+    .meta-val{font-size:20px;font-weight:600;font-family:monospace}
+    .meta-lbl{font-size:11px;color:#999}
+    .chart-box{background:#f8f8f8;border-radius:10px;padding:14px;margin:16px 0}
+    .chart-title{font-size:12px;font-weight:600;color:#666;margin-bottom:10px}
+    .footer{margin-top:36px;font-size:11px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:14px}
+  </style>
+  </head><body>
+  <h1>Séance chrono</h1>
+  <p style="color:#999;font-size:13px">${fmtDate(s.timestamp)}</p>
+  <div class="meta">
+    <div class="meta-item"><span class="meta-val">${fmt(s.elapsed)}</span><span class="meta-lbl">temps total</span></div>
+    <div class="meta-item"><span class="meta-val">${totalSplits}</span><span class="meta-lbl">splits</span></div>
+    <div class="meta-item"><span class="meta-val">${s.segments ? s.segments.length : 0}</span><span class="meta-lbl">segments</span></div>
+  </div>
+  ${lineDatasets.length ? `
+  <h2>Évolution des splits</h2>
+  <div class="chart-box">
+    <div class="chart-title">Temps au tour par segment (secondes)</div>
+    <canvas id="lineChart" height="120"></canvas>
+  </div>` : ''}
+  <h2>Résumé par segment</h2>
+  <table><thead><tr><th>Segment</th><th>Temps total</th><th>Splits</th><th>Meilleur split</th><th>Moyenne</th></tr></thead><tbody>${segRows}</tbody></table>
+  ${splitsRows ? `<h2>Détail des splits</h2><table><thead><tr><th>Seg</th><th>#</th><th>Temps au tour</th><th>Cadence</th><th>Cumulé</th></tr></thead><tbody>${splitsRows}</tbody></table>` : ''}
+  <div class="footer">Rowtimer · ${fmtDate(Date.now())}</div>
+  <script>
+    ${lineDatasets.length ? `
+    const ds = ${JSON.stringify(lineDatasets)};
+    const mx = ${maxLen};
+    new Chart(document.getElementById('lineChart').getContext('2d'),{
+      type:'line',
+      data:{
+        labels:Array.from({length:mx},(_,i)=>'#'+(i+1)),
+        datasets:ds.map(d=>({label:d.label,data:d.data,borderColor:d.color,backgroundColor:d.color+'22',tension:0.3,pointRadius:3,fill:false}))
+      },
+      options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}}},scales:{y:{ticks:{callback:v=>v+'s',font:{size:11}}},x:{ticks:{font:{size:11}}}}}
+    });` : ''}
+  <\/script>
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
+  if (w) { setTimeout(() => { w.print(); URL.revokeObjectURL(url); }, 1200); }
+  else { const a = document.createElement('a'); a.href = url; a.download = 'chrono_' + s.id + '.html'; a.click(); URL.revokeObjectURL(url); }
+  showToast('PDF prêt à imprimer');
 }
 
 /* ══ EXPORT CSV ══ */
