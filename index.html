@@ -307,7 +307,7 @@
   .hist-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text2); font-size: 13px; }
   .hist-empty i { font-size: 36px; color: var(--border); }
 
-  .sess-card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+  .sess-card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); overflow: visible; }
   .sess-top { background: var(--bg2); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
   .sess-name { font-size: 13px; font-weight: 600; color: var(--text); }
   .sess-dt { font-size: 10px; color: var(--text2); }
@@ -316,13 +316,13 @@
   .sess-stat + .sess-stat { border-left: 1px solid var(--border); padding-left: 12px; }
   .sess-stat-v { font-size: 15px; font-weight: 600; font-family: var(--mono); color: var(--text); }
   .sess-stat-l { font-size: 10px; color: var(--text2); }
-  .sess-boats-list { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 3px; }
+  .sess-boats-list { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 3px; max-height: 120px; overflow-y: auto; }
   .sess-boat { display: flex; align-items: center; gap: 6px; font-size: 11px; }
   .sess-boat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .sess-boat-name { flex: 1; color: var(--text2); }
   .sess-boat-t { font-family: var(--mono); font-weight: 600; color: var(--text); }
   .sess-boat-s { color: var(--text2); font-size: 10px; }
-  .sess-acts { border-top: 1px solid var(--border); display: flex; }
+  .sess-acts { border-top: 1px solid var(--border); display: flex; background: #fff; border-radius: 0 0 var(--radius) var(--radius); position: relative; z-index: 1; }
   .sess-act { flex: 1; background: none; border: none; cursor: pointer; padding: 8px 4px; font-size: 11px; font-weight: 500; font-family: var(--sans); color: var(--blue); display: flex; align-items: center; justify-content: center; gap: 4px; }
   .sess-act:active { background: var(--bg2); }
   .sess-act + .sess-act { border-left: 1px solid var(--border); }
